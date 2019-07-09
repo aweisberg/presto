@@ -72,7 +72,6 @@ public class BlockStreamReader
 
     @Override
     public Block readBlock(Type type)
-            throws IOException
     {
         return null;
     }
