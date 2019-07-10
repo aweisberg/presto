@@ -331,7 +331,8 @@ public final class HiveQueryRunner
             baseDataDir = Optional.of(baseDataDirFile.toPath());
         }
 
-        DistributedQueryRunner queryRunner = createQueryRunner(TpchTable.getTables(), ImmutableMap.of("http-server.http.port", "8080"), baseDataDir);
+        String port = System.getenv("PORT") != null ? System.getenv("PORT") : "8080";
+        DistributedQueryRunner queryRunner = createQueryRunner(TpchTable.getTables(), ImmutableMap.of("http-server.http.port", port), baseDataDir);
         Thread.sleep(10);
         Logger log = Logger.get(DistributedQueryRunner.class);
         log.info("======== SERVER STARTED ========");
