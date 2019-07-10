@@ -197,6 +197,10 @@ public class DistributedQueryRunner
         }
         HashMap<String, String> properties = new HashMap<>(propertiesBuilder.build());
         properties.putAll(extraProperties);
+        properties.put("query.max-memory-per-node", "16GB");
+        properties.put("query.max-total-memory-per-node", "16GB");
+        properties.put("query.max-memory", "16GB");
+        properties.put("query.max-total-memory", "16GB");
 
         TestingPrestoServer server = new TestingPrestoServer(coordinator, properties, environment, discoveryUri, parserOptions, ImmutableList.of(), baseDataDir);
 
