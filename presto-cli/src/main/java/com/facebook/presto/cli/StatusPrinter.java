@@ -121,10 +121,10 @@ Spilled: 20GB
                     }
 
                     // update screen
-                    if (update) {
-                        updateScreen(warningsPrinter);
-                        lastPrint = System.nanoTime();
-                    }
+                 //   if (update) {
+                 //       updateScreen(warningsPrinter);
+                 //       lastPrint = System.nanoTime();
+                 //   }
 
                     // fetch next results (server will wait for a while if no data)
                     client.advance();
@@ -222,6 +222,7 @@ Spilled: 20GB
                 formatDataRate(bytes(stats.getProcessedBytes()), wallTime, true));
 
         out.println(statsLine);
+        out.println(formatTime(wallTime));
 
         // blank line
         out.println();

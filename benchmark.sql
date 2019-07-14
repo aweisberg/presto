@@ -17,6 +17,11 @@ SELECT COUNT(*), MAX(partkey) FROM lineitem WHERE comment LIKE '%fur%' AND partk
 SELECT COUNT(*), SUM(extendedprice) FROM lineitem WHERE shipmode LIKE '%AIR%' AND shipinstruct LIKE '%PERSON';
 SELECT COUNT(*), SUM(extendedprice) FROM lineitem WHERE shipmode LIKE '%AIR%';
 
+/* Disable filter reordering */
+SET SESSION hive.filter_reordering_enabled = false;
+SELECT COUNT(*) FROM lineitem WHERE partkey < 19000000 AND suppkey < 900000 AND quantity < 45 AND extendedprice < 9000;
+SELECT COUNT(*), MAX(partkey) FROM lineitem WHERE comment LIKE '%fur%' AND partkey + 1 < 19000000 AND suppkey + 1 < 100000;
+
 /* Disable Aria scan */
 SET SESSION aria_scan = false;
 SET SESSION hive.aria_scan_enabled = false;
