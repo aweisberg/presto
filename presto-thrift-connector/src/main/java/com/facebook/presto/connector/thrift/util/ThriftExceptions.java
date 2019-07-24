@@ -13,9 +13,6 @@
  */
 package com.facebook.presto.connector.thrift.util;
 
-import com.facebook.drift.TApplicationException;
-import com.facebook.drift.TException;
-import com.facebook.drift.protocol.TTransportException;
 import com.facebook.presto.connector.thrift.api.PrestoThriftServiceException;
 import com.facebook.presto.spi.PrestoException;
 import com.google.common.util.concurrent.ListenableFuture;
