@@ -26,6 +26,7 @@ import com.facebook.presto.sql.gen.JoinFilterFunctionCompiler.JoinFilterFunction
 import io.airlift.slice.Slice;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.longs.LongArrayList;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import org.locationtech.jts.geom.Envelope;
 import org.locationtech.jts.index.strtree.STRtree;
 import org.openjdk.jol.info.ClassLayout;
@@ -53,7 +54,7 @@ public class PagesRTreeIndex
     private final LongArrayList addresses;
     private final List<Type> types;
     private final List<Integer> outputChannels;
-    private final List<List<Block>> channels;
+    private final ObjectArrayList<Block>[] channels;
     private final STRtree rtree;
     private final int radiusChannel;
     private final SpatialPredicate spatialRelationshipTest;
@@ -101,7 +102,7 @@ public class PagesRTreeIndex
             LongArrayList addresses,
             List<Type> types,
             List<Integer> outputChannels,
-            List<List<Block>> channels,
+            ObjectArrayList<Block>[] channels,
             STRtree rtree,
             Optional<Integer> radiusChannel,
             SpatialPredicate spatialRelationshipTest,
@@ -197,7 +198,7 @@ public class PagesRTreeIndex
         int blockIndex = decodeSliceIndex(joinAddress);
         int blockPosition = decodePosition(joinAddress);
 
-        return DOUBLE.getDouble(channels.get(radiusChannel).get(blockIndex), blockPosition);
+        return DOUBLE.getDouble(channels[radiusChannel].get(blockIndex), blockPosition);
     }
 
     @Override
@@ -215,7 +216,7 @@ public class PagesRTreeIndex
 
         for (int outputIndex : outputChannels) {
             Type type = types.get(outputIndex);
-            List<Block> channel = channels.get(outputIndex);
+            List<Block> channel = channels[outputIndex];
             Block block = channel.get(blockIndex);
             type.appendTo(block, blockPosition, pageBuilder.getBlockBuilder(outputChannelOffset));
             outputChannelOffset++;

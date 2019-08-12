@@ -169,7 +169,8 @@ public class SpatialIndexBuilderOperator
         this.filterFunctionFactory = filterFunctionFactory;
 
         this.pagesSpatialIndexFactory = requireNonNull(pagesSpatialIndexFactory, "pagesSpatialIndexFactory is null");
-        this.index = pagesIndexFactory.newPagesIndex(pagesSpatialIndexFactory.getTypes(), expectedPositions);
+        this.index = pagesIndexFactory.newPagesIndex(pagesSpatialIndexFactory.getTypes(), expectedPositions)
+                .withSpatialIndex(operatorContext.getSession(), indexChannel, radiusChannel, partitionChannel, spatialRelationshipTest, filterFunctionFactory, outputChannels, partitions);
 
         this.outputChannels = requireNonNull(outputChannels, "outputChannels is null");
         this.indexChannel = indexChannel;
@@ -230,8 +231,8 @@ public class SpatialIndexBuilderOperator
         }
 
         finishing = true;
-        PagesSpatialIndexSupplier spatialIndex = index.createPagesSpatialIndex(operatorContext.getSession(), indexChannel, radiusChannel, partitionChannel, spatialRelationshipTest, filterFunctionFactory, outputChannels, partitions);
-        localUserMemoryContext.setBytes(index.getEstimatedSize().toBytes() + spatialIndex.getEstimatedSize().toBytes());
+        PagesSpatialIndexSupplier spatialIndex = index.getPagesSpatialIndex();
+        localUserMemoryContext.setBytes(index.getEstimatedSize().toBytes());
         indexNotNeeded = pagesSpatialIndexFactory.lendPagesSpatialIndex(spatialIndex);
     }
 

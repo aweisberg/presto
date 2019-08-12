@@ -30,6 +30,7 @@ import com.facebook.presto.sql.gen.JoinCompiler;
 import com.facebook.presto.sql.gen.JoinCompiler.LookupSourceSupplierFactory;
 import com.facebook.presto.sql.gen.JoinFilterFunctionCompiler.JoinFilterFunctionFactory;
 import com.facebook.presto.sql.gen.OrderingCompiler;
+import com.google.common.base.Preconditions;
 import com.google.common.collect.AbstractIterator;
 import com.google.common.collect.ImmutableList;
 import io.airlift.log.Logger;
@@ -92,6 +93,9 @@ public class PagesIndex
     private long pagesMemorySize;
     private long estimatedSize;
 
+    private Optional<PagesSpatialIndexBuilder> spatialIndexBuilder;
+    private Optional<PagesSpatialIndexSupplier> spatialIndexSupplier;
+
     private PagesIndex(
             OrderingCompiler orderingCompiler,
             JoinCompiler joinCompiler,
@@ -108,6 +112,8 @@ public class PagesIndex
         this.types = ImmutableList.copyOf(requireNonNull(types, "types is null"));
         this.valueAddresses = new LongArrayList(expectedPositions);
         this.eagerCompact = eagerCompact;
+        spatialIndexBuilder = Optional.empty();
+        spatialIndexSupplier = Optional.empty();
 
         //noinspection rawtypes
         channels = (ObjectArrayList<Block>[]) new ObjectArrayList[types.size()];
@@ -116,6 +122,19 @@ public class PagesIndex
         }
 
         estimatedSize = calculateEstimatedSize();
+    }
+
+    public PagesIndex withSpatialIndex(Session session,
+                            int geometryChannel,
+                            Optional<Integer> radiusChannel,
+                            Optional<Integer> partitionChannel,
+                            SpatialPredicate spatialRelationshipTest,
+                            Optional<JoinFilterFunctionFactory> filterFunctionFactory,
+                            List<Integer> outputChannels,
+                            Map<Integer, Rectangle> partitions)
+    {
+        spatialIndexBuilder = Optional.of(new PagesSpatialIndexBuilder(session, valueAddresses, types, outputChannels, channels, geometryChannel, radiusChannel, partitionChannel, spatialRelationshipTest, filterFunctionFactory, partitions));
+        return this;
     }
 
     public interface Factory
@@ -206,11 +225,14 @@ public class PagesIndex
 
     public void addPage(Page page)
     {
+        Preconditions.checkState(!spatialIndexSupplier.isPresent(), "Can't add pages after spatial index is built");
+
         // ignore empty pages
         if (page.getPositionCount() == 0) {
             return;
         }
 
+        int start = positionCount;
         positionCount += page.getPositionCount();
 
         int pageIndex = (channels.length > 0) ? channels[0].size() : 0;
@@ -227,6 +249,12 @@ public class PagesIndex
             long sliceAddress = encodeSyntheticAddress(pageIndex, position);
             valueAddresses.add(sliceAddress);
         }
+
+        if (spatialIndexBuilder.isPresent())
+        {
+            spatialIndexBuilder.get().addPage(start);
+        }
+
         estimatedSize = calculateEstimatedSize();
     }
 
@@ -258,10 +286,21 @@ public class PagesIndex
 
     private long calculateEstimatedSize()
     {
+        Preconditions.checkState(!(spatialIndexSupplier.isPresent() && spatialIndexBuilder.isPresent()));
+
         long elementsSize = (channels.length > 0) ? sizeOf(channels[0].elements()) : 0;
         long channelsArraySize = elementsSize * channels.length;
         long addressesArraySize = sizeOf(valueAddresses.elements());
-        return INSTANCE_SIZE + pagesMemorySize + channelsArraySize + addressesArraySize;
+
+        long spatialIndexSize = 0;
+        if (spatialIndexBuilder.isPresent()) {
+            spatialIndexSize += spatialIndexBuilder.get().getEstimatedSize().toBytes();
+        }
+        if (spatialIndexSupplier.isPresent()) {
+            spatialIndexSize += spatialIndexSupplier.get().getEstimatedSize().toBytes();
+        }
+
+        return INSTANCE_SIZE + pagesMemorySize + channelsArraySize + addressesArraySize + spatialIndexSize;
     }
 
     public Type getType(int channel)
@@ -456,19 +495,19 @@ public class PagesIndex
         return createLookupSourceSupplier(session, joinChannels, hashChannel, filterFunctionFactory, sortChannel, searchFunctionFactories, Optional.empty());
     }
 
-    public PagesSpatialIndexSupplier createPagesSpatialIndex(
-            Session session,
-            int geometryChannel,
-            Optional<Integer> radiusChannel,
-            Optional<Integer> partitionChannel,
-            SpatialPredicate spatialRelationshipTest,
-            Optional<JoinFilterFunctionFactory> filterFunctionFactory,
-            List<Integer> outputChannels,
-            Map<Integer, Rectangle> partitions)
+    public PagesSpatialIndexSupplier getPagesSpatialIndex()
     {
-        // TODO probably shouldn't copy to reduce memory and for memory accounting's sake
-        List<List<Block>> channels = ImmutableList.copyOf(this.channels);
-        return new PagesSpatialIndexSupplier(session, valueAddresses, types, outputChannels, channels, geometryChannel, radiusChannel, partitionChannel, spatialRelationshipTest, filterFunctionFactory, partitions);
+        if (spatialIndexSupplier.isPresent()) {
+            return spatialIndexSupplier.get();
+        }
+        if (spatialIndexBuilder.isPresent()) {
+            spatialIndexSupplier = Optional.of(spatialIndexBuilder.get().build());
+            estimatedSize = calculateEstimatedSize();
+            spatialIndexBuilder = Optional.empty();
+            return spatialIndexSupplier.get();
+        } else {
+            throw new IllegalStateException("Can't get spatial index without first calling withSpatialIndex before addPage");
+        }
     }
 
     public LookupSourceSupplier createLookupSourceSupplier(

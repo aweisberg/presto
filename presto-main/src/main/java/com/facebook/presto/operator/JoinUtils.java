@@ -16,6 +16,7 @@ package com.facebook.presto.operator;
 import com.facebook.presto.spi.Page;
 import com.facebook.presto.spi.block.Block;
 import com.google.common.collect.ImmutableList;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 
 import java.util.List;
 
@@ -41,4 +42,21 @@ public final class JoinUtils
         }
         return pagesBuilder.build();
     }
+
+    public static List<Page> channelsToPages(ObjectArrayList<Block>[] channels)
+    {
+        ImmutableList.Builder<Page> pagesBuilder = ImmutableList.builder();
+        if (channels.length != 0) {
+            int pagesCount = channels[0].size();
+            for (int pageIndex = 0; pageIndex < pagesCount; ++pageIndex) {
+                Block[] blocks = new Block[channels.length];
+                for (int channelIndex = 0; channelIndex < channels.length; ++channelIndex) {
+                    blocks[channelIndex] = channels[channelIndex].get(pageIndex);
+                }
+                pagesBuilder.add(new Page(blocks));
+            }
+        }
+        return pagesBuilder.build();
+    }
+
 }
