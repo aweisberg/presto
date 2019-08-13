@@ -69,7 +69,6 @@ public class PagesSpatialIndexBuilder
     private final Optional<Integer> partitionChannel;
     private final int geometryChannel;
 
-
     public PagesSpatialIndexBuilder(
             Session session,
             LongArrayList addresses,
@@ -144,7 +143,7 @@ public class PagesSpatialIndexBuilder
             memorySizeInBytes += ENVELOPE_INSTANCE_SIZE // Created by us, fixed size
                     + ITEM_BOUNDABLE_INSTANCE_SIZE //Created by STRTree
                     + geometryWithPosition.getEstimatedMemorySizeInBytes()
-                    + 8;// 8-bytes for the internal array in STRTree
+                    + 8; // 8-bytes for the internal array in STRTree
             rtree.insert(envelope, geometryWithPosition);
         }
 

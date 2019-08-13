@@ -58,5 +58,4 @@ public final class JoinUtils
         }
         return pagesBuilder.build();
     }
-
 }

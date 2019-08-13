@@ -250,8 +250,7 @@ public class PagesIndex
             valueAddresses.add(sliceAddress);
         }
 
-        if (spatialIndexBuilder.isPresent())
-        {
+        if (spatialIndexBuilder.isPresent()) {
             spatialIndexBuilder.get().addPage(start);
         }
 
@@ -505,7 +504,8 @@ public class PagesIndex
             estimatedSize = calculateEstimatedSize();
             spatialIndexBuilder = Optional.empty();
             return spatialIndexSupplier.get();
-        } else {
+        }
+        else {
             throw new IllegalStateException("Can't get spatial index without first calling withSpatialIndex before addPage");
         }
     }

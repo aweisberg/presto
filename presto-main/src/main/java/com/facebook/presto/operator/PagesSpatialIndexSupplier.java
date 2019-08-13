@@ -13,11 +13,6 @@
  */
 package com.facebook.presto.operator;
 
-import com.esri.core.geometry.Geometry;
-import com.esri.core.geometry.GeometryCursor;
-import com.esri.core.geometry.Operator;
-import com.esri.core.geometry.OperatorFactoryLocal;
-import com.esri.core.geometry.ogc.OGCGeometry;
 import com.facebook.presto.Session;
 import com.facebook.presto.geospatial.Rectangle;
 import com.facebook.presto.operator.PagesRTreeIndex.GeometryWithPosition;
@@ -25,7 +20,6 @@ import com.facebook.presto.operator.SpatialIndexBuilderOperator.SpatialPredicate
 import com.facebook.presto.spi.block.Block;
 import com.facebook.presto.spi.type.Type;
 import com.facebook.presto.sql.gen.JoinFilterFunctionCompiler;
-import io.airlift.slice.Slice;
 import io.airlift.units.DataSize;
 import it.unimi.dsi.fastutil.longs.LongArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
