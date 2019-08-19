@@ -501,8 +501,8 @@ public class PagesIndex
         }
         if (spatialIndexBuilder.isPresent()) {
             spatialIndexSupplier = Optional.of(spatialIndexBuilder.get().build());
-            estimatedSize = calculateEstimatedSize();
             spatialIndexBuilder = Optional.empty();
+            estimatedSize = calculateEstimatedSize();
             return spatialIndexSupplier.get();
         }
         else {
