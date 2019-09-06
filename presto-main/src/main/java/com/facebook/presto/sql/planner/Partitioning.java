@@ -26,6 +26,7 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Sets;
 
 import javax.annotation.concurrent.Immutable;
 
@@ -36,6 +37,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import static com.facebook.presto.spi.relation.SpecialFormExpression.Form.COALESCE;
 import static com.facebook.presto.sql.relational.OriginalExpressionUtils.castToExpression;
@@ -239,6 +241,34 @@ public final class Partitioning
             }
         }
         return true;
+    }
+
+    public boolean isPartitionedOnExactly(Collection<VariableReferenceExpression> columns, Set<VariableReferenceExpression> knownConstants)
+    {
+        Set<VariableReferenceExpression> toCheck = Sets.newHashSet();
+        for (RowExpression argument : arguments) {
+            // partitioned on (k_1, k_2, ..., k_n) => partitioned on (k_1, k_2, ..., k_n, k_n+1, ...)
+            // can safely ignore all constant columns when comparing partition properties
+            if (argument instanceof ConstantExpression) {
+                continue;
+            }
+            if (!(argument instanceof VariableReferenceExpression)) {
+                return false;
+            }
+            if (knownConstants.contains(argument)) {
+                continue;
+            }
+            toCheck.add((VariableReferenceExpression)argument);
+        }
+        return ImmutableSet.of(columns).equals(toCheck);
+//        // partitioned on (k_1, k_2, ..., k_n) => partitioned on (k_1, k_2, ..., k_n, k_n+1, ...)
+//        // can safely ignore all constant columns when comparing partition properties
+//        Set<VariableReferenceExpression> argumentsSet = arguments.stream()
+//                .filter(ArgumentBinding::isVariable)
+//                .map(ArgumentBinding::getVariableReference)
+//                .filter(variable -> !knownConstants.contains(variable))
+//                .collect(Collectors.toSet());
+//        return ImmutableSet.of(columns).equals(argumentsSet);
     }
 
     public boolean isEffectivelySinglePartition(Set<VariableReferenceExpression> knownConstants)

@@ -115,14 +115,19 @@ public class ActualProperties
         return global.isStreamPartitionedOn(columns, constants.keySet(), nullsAndAnyReplicated);
     }
 
-    public boolean isNodePartitionedOn(Collection<VariableReferenceExpression> columns)
+    public boolean isNodePartitionedOn2(Collection<VariableReferenceExpression> columns, boolean exactly)
     {
-        return isNodePartitionedOn(columns, false);
+        return isNodePartitionedOn(columns, false, exactly);
     }
 
-    public boolean isNodePartitionedOn(Collection<VariableReferenceExpression> columns, boolean nullsAndAnyReplicated)
+    public boolean isNodePartitionedOn(Collection<VariableReferenceExpression> columns, boolean nullsAndAnyReplicated, boolean exactly)
     {
-        return global.isNodePartitionedOn(columns, constants.keySet(), nullsAndAnyReplicated);
+        if (exactly) {
+            return global.isNodePartitionedOnExactly(columns, constants.keySet(), nullsAndAnyReplicated);
+        }
+        else {
+            return global.isNodePartitionedOn(columns, constants.keySet(), nullsAndAnyReplicated);
+        }
     }
 
     @Deprecated
@@ -469,6 +474,11 @@ public class ActualProperties
         private boolean isNodePartitionedOn(Collection<VariableReferenceExpression> columns, Set<VariableReferenceExpression> constants, boolean nullsAndAnyReplicated)
         {
             return nodePartitioning.isPresent() && nodePartitioning.get().isPartitionedOn(columns, constants) && this.nullsAndAnyReplicated == nullsAndAnyReplicated;
+        }
+
+        private boolean isNodePartitionedOnExactly(Collection<VariableReferenceExpression> columns, Set<VariableReferenceExpression> constants, boolean nullsAndAnyReplicated)
+        {
+            return nodePartitioning.isPresent() && nodePartitioning.get().isPartitionedOnExactly(columns, constants) && this.nullsAndAnyReplicated == nullsAndAnyReplicated;
         }
 
         private boolean isCompatibleTablePartitioningWith(Partitioning partitioning, boolean nullsAndAnyReplicated, Metadata metadata, Session session)
