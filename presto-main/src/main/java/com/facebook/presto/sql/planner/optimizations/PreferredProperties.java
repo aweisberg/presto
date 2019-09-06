@@ -13,6 +13,7 @@
  */
 package com.facebook.presto.sql.planner.optimizations;
 
+import com.facebook.presto.Session;
 import com.facebook.presto.spi.LocalProperty;
 import com.facebook.presto.spi.relation.RowExpression;
 import com.facebook.presto.spi.relation.VariableReferenceExpression;
@@ -29,6 +30,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
 
+import static com.facebook.presto.SystemSessionProperties.isUseExactPartitioningEnabled;
 import static com.google.common.base.MoreObjects.toStringHelper;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.collect.ImmutableSet.toImmutableSet;
@@ -130,8 +132,12 @@ class PreferredProperties
         return localProperties;
     }
 
-    public PreferredProperties mergeWithParent(PreferredProperties parent)
+    public PreferredProperties mergeWithParent(PreferredProperties parent, Session session)
     {
+        if (isUseExactPartitioningEnabled(session)) {
+            return this;
+        }
+
         List<LocalProperty<VariableReferenceExpression>> newLocal = ImmutableList.<LocalProperty<VariableReferenceExpression>>builder()
                 .addAll(localProperties)
                 .addAll(parent.getLocalProperties())
@@ -249,28 +255,6 @@ class PreferredProperties
             return partitioningProperties;
         }
 
-        public Global mergeWithParent(Global parent)
-        {
-            if (distributed != parent.distributed) {
-                return this;
-            }
-            if (!partitioningProperties.isPresent()) {
-                return parent;
-            }
-            if (!parent.partitioningProperties.isPresent()) {
-                return this;
-            }
-            return new Global(distributed, Optional.of(partitioningProperties.get().mergeWithParent(parent.partitioningProperties.get())));
-        }
-
-        public Global translate(Function<VariableReferenceExpression, Optional<VariableReferenceExpression>> translator)
-        {
-            if (!isDistributed()) {
-                return this;
-            }
-            return distributed(partitioningProperties.flatMap(properties -> properties.translateVariable(translator)));
-        }
-
         @Override
         public int hashCode()
         {
@@ -298,6 +282,28 @@ class PreferredProperties
                     .add("distributed", distributed)
                     .add("partitioningProperties", partitioningProperties)
                     .toString();
+        }
+
+        private Global mergeWithParent(Global parent)
+        {
+            if (distributed != parent.distributed) {
+                return this;
+            }
+            if (!partitioningProperties.isPresent()) {
+                return parent;
+            }
+            if (!parent.partitioningProperties.isPresent()) {
+                return this;
+            }
+            return new Global(distributed, Optional.of(partitioningProperties.get().mergeWithParent(parent.partitioningProperties.get())));
+        }
+
+        public Global translate(Function<VariableReferenceExpression, Optional<VariableReferenceExpression>> translator)
+        {
+            if (!isDistributed()) {
+                return this;
+            }
+            return distributed(partitioningProperties.flatMap(properties -> properties.translateVariable(translator)));
         }
     }
 
@@ -350,29 +356,6 @@ class PreferredProperties
         public boolean isNullsAndAnyReplicated()
         {
             return nullsAndAnyReplicated;
-        }
-
-        public PartitioningProperties mergeWithParent(PartitioningProperties parent)
-        {
-            // Non-negotiable if we require a specific partitioning
-            if (partitioning.isPresent()) {
-                return this;
-            }
-
-            // Partitioning with different replication cannot be compared
-            if (nullsAndAnyReplicated != parent.nullsAndAnyReplicated) {
-                return this;
-            }
-
-            if (parent.partitioning.isPresent()) {
-                // If the parent has a partitioning preference, propagate parent only if the parent's partitioning columns satisfies our preference.
-                // Otherwise, ignore the parent since the parent will have to repartition anyways.
-                return partitioningColumns.containsAll(parent.partitioningColumns) ? parent : this;
-            }
-
-            // Otherwise partition on any common columns if available
-            Set<VariableReferenceExpression> common = Sets.intersection(partitioningColumns, parent.partitioningColumns);
-            return common.isEmpty() ? this : partitioned(common).withNullsAndAnyReplicated(nullsAndAnyReplicated);
         }
 
         public Optional<PartitioningProperties> translateVariable(Function<VariableReferenceExpression, Optional<VariableReferenceExpression>> translator)
@@ -429,6 +412,29 @@ class PreferredProperties
                     .add("partitioning", partitioning)
                     .add("nullsAndAnyReplicated", nullsAndAnyReplicated)
                     .toString();
+        }
+
+        private PartitioningProperties mergeWithParent(PartitioningProperties parent)
+        {
+            // Non-negotiable if we require a specific partitioning
+            if (partitioning.isPresent()) {
+                return this;
+            }
+
+            // Partitioning with different replication cannot be compared
+            if (nullsAndAnyReplicated != parent.nullsAndAnyReplicated) {
+                return this;
+            }
+
+            if (parent.partitioning.isPresent()) {
+                // If the parent has a partitioning preference, propagate parent only if the parent's partitioning columns satisfies our preference.
+                // Otherwise, ignore the parent since the parent will have to repartition anyways.
+                return partitioningColumns.containsAll(parent.partitioningColumns) ? parent : this;
+            }
+
+            // Otherwise partition on any common columns if available
+            Set<VariableReferenceExpression> common = Sets.intersection(partitioningColumns, parent.partitioningColumns);
+            return common.isEmpty() ? this : partitioned(common).withNullsAndAnyReplicated(nullsAndAnyReplicated);
         }
     }
 }

@@ -135,6 +135,7 @@ public final class SystemSessionProperties
     public static final String OPTIMIZE_FULL_OUTER_JOIN_WITH_COALESCE = "optimize_full_outer_join_with_coalesce";
     public static final String INDEX_LOADER_TIMEOUT = "index_loader_timeout";
     public static final String OPTIMIZED_REPARTITIONING_ENABLED = "optimized_repartitioning";
+    public static final String USE_EXACT_PARTITIONING = "use_exact_partitioning";
 
     private final List<PropertyMetadata<?>> sessionProperties;
 
@@ -664,6 +665,11 @@ public final class SystemSessionProperties
                         OPTIMIZED_REPARTITIONING_ENABLED,
                         "Experimental: Use optimized repartitioning",
                         featuresConfig.isOptimizedRepartitioningEnabled(),
+                        false),
+                booleanProperty(
+                        USE_EXACT_PARTITIONING,
+                        "Experimental: Require exact partitioning when eliding exchanges",
+                        featuresConfig.isUseExactPartitioningEnabled(),
                         false));
     }
 
@@ -1133,5 +1139,10 @@ public final class SystemSessionProperties
     public static boolean isOptimizedRepartitioningEnabled(Session session)
     {
         return session.getSystemProperty(OPTIMIZED_REPARTITIONING_ENABLED, Boolean.class);
+    }
+
+    public static boolean isUseExactPartitioningEnabled(Session session)
+    {
+        return session.getSystemProperty(USE_EXACT_PARTITIONING, Boolean.class);
     }
 }

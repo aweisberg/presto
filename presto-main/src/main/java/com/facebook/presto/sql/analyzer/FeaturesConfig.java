@@ -143,6 +143,8 @@ public class FeaturesConfig
 
     private Duration indexLoaderTimeout = new Duration(20, SECONDS);
 
+    private boolean isUseExactPartitioningEnabled = true;
+
     public enum JoinReorderingStrategy
     {
         NONE,
@@ -1099,6 +1101,19 @@ public class FeaturesConfig
     public FeaturesConfig setOptimizedRepartitioningEnabled(boolean optimizedRepartitioningEnabled)
     {
         this.optimizedRepartitioningEnabled = optimizedRepartitioningEnabled;
+        return this;
+    }
+
+    public boolean isUseExactPartitioningEnabled()
+    {
+        return isUseExactPartitioningEnabled;
+    }
+
+    @Config("use-exact-partitioning-enabled")
+    @ConfigDescription("Experimental: Require exact partitioning when eliding exchanges")
+    public FeaturesConfig setUseExactPartitioningEnabled(boolean useExactPartitioningEnabled)
+    {
+        this.isUseExactPartitioningEnabled = useExactPartitioningEnabled;
         return this;
     }
 }
