@@ -26,18 +26,17 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Sets;
 
 import javax.annotation.concurrent.Immutable;
 
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 
 import static com.facebook.presto.spi.relation.SpecialFormExpression.Form.COALESCE;
 import static com.facebook.presto.sql.relational.OriginalExpressionUtils.castToExpression;
@@ -245,7 +244,7 @@ public final class Partitioning
 
     public boolean isPartitionedOnExactly(Collection<VariableReferenceExpression> columns, Set<VariableReferenceExpression> knownConstants)
     {
-        Set<VariableReferenceExpression> toCheck = Sets.newHashSet();
+        Set<VariableReferenceExpression> toCheck = new HashSet<>();
         for (RowExpression argument : arguments) {
             // partitioned on (k_1, k_2, ..., k_n) => partitioned on (k_1, k_2, ..., k_n, k_n+1, ...)
             // can safely ignore all constant columns when comparing partition properties
@@ -258,7 +257,7 @@ public final class Partitioning
             if (knownConstants.contains(argument)) {
                 continue;
             }
-            toCheck.add((VariableReferenceExpression)argument);
+            toCheck.add((VariableReferenceExpression) argument);
         }
         return ImmutableSet.of(columns).equals(toCheck);
 //        // partitioned on (k_1, k_2, ..., k_n) => partitioned on (k_1, k_2, ..., k_n, k_n+1, ...)
