@@ -142,7 +142,7 @@ public class FeaturesConfig
 
     private Duration indexLoaderTimeout = new Duration(20, SECONDS);
 
-    private boolean isUseExactPartitioningEnabled;
+    private boolean isUseExactPartitioningEnabled = true;
 
     public enum JoinReorderingStrategy
     {
