@@ -262,7 +262,7 @@ public class AddExchanges
                         gatheringExchange(idAllocator.getNextId(), REMOTE_STREAMING, child.getNode()),
                         child.getProperties());
             }
-            else if (!child.getProperties().isStreamPartitionedOn(partitioningRequirement) && !isNodePartitionedOn(child.getProperties(), partitioningRequirement)) {
+            else if (!isStreamPartitionedOn(child.getProperties(), partitioningRequirement) && !isNodePartitionedOn(child.getProperties(), partitioningRequirement)) {
                 child = withDerivedProperties(
                         partitionedExchange(
                                 idAllocator.getNextId(),
@@ -306,7 +306,7 @@ public class AddExchanges
             PlanWithProperties child = node.getSource().accept(this, preferredChildProperties);
 
             if (child.getProperties().isSingleNode() ||
-                    !child.getProperties().isStreamPartitionedOn(node.getDistinctVariables())) {
+                    !isStreamPartitionedOn(child.getProperties(), node.getDistinctVariables())) {
                 child = withDerivedProperties(
                         partitionedExchange(
                                 idAllocator.getNextId(),
@@ -337,7 +337,7 @@ public class AddExchanges
                     PreferredProperties.partitionedWithLocal(ImmutableSet.copyOf(node.getPartitionBy()), desiredProperties)
                             .mergeWithParent(preferredProperties, session));
 
-            if (!child.getProperties().isStreamPartitionedOn(node.getPartitionBy()) &&
+            if (!isStreamPartitionedOn(child.getProperties(), node.getPartitionBy()) &&
                     !isNodePartitionedOn(child.getProperties(), node.getPartitionBy())) {
                 if (node.getPartitionBy().isEmpty()) {
                     child = withDerivedProperties(
@@ -380,7 +380,7 @@ public class AddExchanges
                             .mergeWithParent(preferredProperties, session));
 
             // TODO: add config option/session property to force parallel plan if child is unpartitioned and window has a PARTITION BY clause
-            if (!child.getProperties().isStreamPartitionedOn(node.getPartitionBy())
+            if (!isStreamPartitionedOn(child.getProperties(), node.getPartitionBy())
                     && !isNodePartitionedOn(child.getProperties(), node.getPartitionBy())) {
                 child = withDerivedProperties(
                         partitionedExchange(
@@ -419,7 +419,7 @@ public class AddExchanges
             }
 
             PlanWithProperties child = planChild(node, preferredChildProperties);
-            if (!child.getProperties().isStreamPartitionedOn(node.getPartitionBy())
+            if (!isStreamPartitionedOn(child.getProperties(), node.getPartitionBy())
                     && !isNodePartitionedOn(child.getProperties(), node.getPartitionBy())) {
                 // add exchange + push function to child
                 child = withDerivedProperties(
@@ -1018,14 +1018,14 @@ public class AddExchanges
 
             // Disable repartitioning if it would disrupt a parent's partitioning preference when streaming is enabled
             boolean parentAlreadyPartitionedOnChild = parentPartitioningPreferences
-                    .map(partitioning -> probeProperties.isStreamPartitionedOn(partitioning.getPartitioningColumns()))
+                    .map(partitioning -> probeProperties.isStreamPartitionedOn2(partitioning.getPartitioningColumns(), isUseExactPartitioningEnabled(session)))
                     .orElse(false);
             if (preferStreamingOperators && parentAlreadyPartitionedOnChild) {
                 return false;
             }
 
             // Otherwise, repartition if we need to align with the join columns
-            if (!probeProperties.isStreamPartitionedOn(joinColumns)) {
+            if (!probeProperties.isStreamPartitionedOn2(joinColumns, isUseExactPartitioningEnabled(session))) {
                 return true;
             }
 
@@ -1362,7 +1362,12 @@ public class AddExchanges
 
         private boolean isNodePartitionedOn(ActualProperties properties, Collection<VariableReferenceExpression> columns)
         {
-            return properties.isNodePartitionedOn2(columns, isUseExactPartitioningEnabled(session));
+            return properties.isNodePartitionedOn(columns, isUseExactPartitioningEnabled(session));
+        }
+
+        private boolean isStreamPartitionedOn(ActualProperties properties, Collection<VariableReferenceExpression> columns)
+        {
+            return properties.isStreamPartitionedOn2(columns, isUseExactPartitioningEnabled(session));
         }
     }
 
@@ -1451,7 +1456,8 @@ public class AddExchanges
         if (!preferredGlobal.getPartitioningProperties().isPresent()) {
             return !actual.isSingleNode();
         }
-        return actual.isStreamPartitionedOn(preferredGlobal.getPartitioningProperties().get().getPartitioningColumns());
+        //TODO No session here and this is only called from test code. Is this OK?
+        return actual.isStreamPartitionedOn2(preferredGlobal.getPartitioningProperties().get().getPartitioningColumns(), false);
     }
 
     // Prefer the match result that satisfied the most requirements

@@ -105,17 +105,22 @@ public class ActualProperties
         return global.isNullsAndAnyReplicated();
     }
 
-    public boolean isStreamPartitionedOn(Collection<VariableReferenceExpression> columns)
+    public boolean isStreamPartitionedOn2(Collection<VariableReferenceExpression> columns, boolean exactly)
     {
-        return isStreamPartitionedOn(columns, false);
+        return isStreamPartitionedOn(columns, false, exactly);
     }
 
-    public boolean isStreamPartitionedOn(Collection<VariableReferenceExpression> columns, boolean nullsAndAnyReplicated)
+    public boolean isStreamPartitionedOn(Collection<VariableReferenceExpression> columns, boolean nullsAndAnyReplicated, boolean exactly)
     {
-        return global.isStreamPartitionedOn(columns, constants.keySet(), nullsAndAnyReplicated);
+        if (exactly) {
+            return global.isStreamPartitionedOnExactly(columns, constants.keySet(), nullsAndAnyReplicated);
+        }
+        else {
+            return global.isStreamPartitionedOn(columns, constants.keySet(), nullsAndAnyReplicated);
+        }
     }
 
-    public boolean isNodePartitionedOn2(Collection<VariableReferenceExpression> columns, boolean exactly)
+    public boolean isNodePartitionedOn(Collection<VariableReferenceExpression> columns, boolean exactly)
     {
         return isNodePartitionedOn(columns, false, exactly);
     }
@@ -539,6 +544,11 @@ public class ActualProperties
         private boolean isStreamPartitionedOn(Collection<VariableReferenceExpression> columns, Set<VariableReferenceExpression> constants, boolean nullsAndAnyReplicated)
         {
             return streamPartitioning.isPresent() && streamPartitioning.get().isPartitionedOn(columns, constants) && this.nullsAndAnyReplicated == nullsAndAnyReplicated;
+        }
+
+        private boolean isStreamPartitionedOnExactly(Collection<VariableReferenceExpression> columns, Set<VariableReferenceExpression> constants, boolean nullsAndAnyReplicated)
+        {
+            return streamPartitioning.isPresent() && streamPartitioning.get().isPartitionedOnExactly(columns, constants) && this.nullsAndAnyReplicated == nullsAndAnyReplicated;
         }
 
         /**
