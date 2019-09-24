@@ -71,6 +71,8 @@ public class ExchangeClient
 {
     private static final SerializedPage NO_MORE_PAGES = new SerializedPage(EMPTY_SLICE, PageCodecMarker.none(), 0, 0);
 
+    static final int INITIAL_REQUEST_COUNT = 8;
+
     private final long bufferCapacity;
     private final DataSize maxResponseSize;
     private final int concurrentRequestMultiplier;
@@ -125,6 +127,8 @@ public class ExchangeClient
             Executor pageBufferClientCallbackExecutor)
     {
         this.bufferCapacity = bufferCapacity.toBytes();
+        this.averageBytesPerRequest = this.bufferCapacity / INITIAL_REQUEST_COUNT;
+        this.successfulRequests = INITIAL_REQUEST_COUNT; // So average in addPages is correct
         this.maxResponseSize = maxResponseSize;
         this.concurrentRequestMultiplier = concurrentRequestMultiplier;
         this.maxErrorDuration = maxErrorDuration;

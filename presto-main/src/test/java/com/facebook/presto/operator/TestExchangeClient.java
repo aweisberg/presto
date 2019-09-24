@@ -30,6 +30,8 @@ import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
 import java.net.URI;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -327,6 +329,64 @@ public class TestExchangeClient
         // client should have sent only 2 requests: one to get all pages and once to get the done signal
         PageBufferClientStatus clientStatus = exchangeClient.getStatus().getPageBufferClientStatuses().get(0);
         assertStatus(clientStatus, location, "closed", "not scheduled");
+    }
+
+    @Test
+    public void testInitialRequestLimit()
+    {
+        DataSize maxResponseSize = new DataSize(1, BYTE);
+        MockExchangeRequestProcessor processor = new MockExchangeRequestProcessor(maxResponseSize);
+        List<URI> locations = new ArrayList<>();
+        int numLocations = ExchangeClient.INITIAL_REQUEST_COUNT * 2;
+
+        // add pages
+        for (int ii = 0; ii < numLocations; ii++)
+        {
+            URI location = URI.create("http://localhost:" + (8080 + ii));
+            locations.add(location);
+
+            processor.addPage(location, createPage(1));
+            processor.addPage(location, createPage(2));
+            processor.addPage(location, createPage(3));
+
+            processor.setComplete(location);
+        }
+
+        @SuppressWarnings("resource")
+        ExchangeClient exchangeClient = new ExchangeClient(
+                new DataSize(8, BYTE),
+                maxResponseSize,
+                1,
+                new Duration(1, MINUTES),
+                true,
+                new TestingHttpClient(processor, testingHttpClientExecutor),
+                scheduler,
+                new SimpleLocalMemoryContext(newSimpleAggregatedMemoryContext(), "test"),
+                pageBufferClientCallbackExecutor);
+
+        for (int ii = 0; ii < numLocations; ii++) {
+            exchangeClient.addLocation(locations.get(ii), TaskId.valueOf("taskid" + ii));
+        }
+        exchangeClient.noMoreLocations();
+        assertFalse(exchangeClient.isClosed());
+
+        long start = System.nanoTime();
+
+        // start fetching pages
+        exchangeClient.scheduleRequestIfNecessary();
+        // wait for a page to be fetched
+        do {
+            // there is no thread coordination here, so sleep is the best we can do
+            assertLessThan(Duration.nanosSince(start), new Duration(5, TimeUnit.SECONDS));
+            sleepUninterruptibly(100, MILLISECONDS);
+        }
+        while (exchangeClient.getStatus().getBufferedPages() < 8);
+
+        // client should have sent 8 requests for a single page
+        assertEquals(exchangeClient.getStatus().getBufferedPages(), 8);
+        assertTrue(exchangeClient.getStatus().getBufferedBytes() > 0);
+        List<PageBufferClientStatus> pageBufferClientStatuses = exchangeClient.getStatus().getPageBufferClientStatuses();
+        assertEquals( 8, pageBufferClientStatuses.stream().filter(status -> status.getPagesReceived() == 1).mapToInt(PageBufferClientStatus::getPagesReceived).sum());
     }
 
     @Test
